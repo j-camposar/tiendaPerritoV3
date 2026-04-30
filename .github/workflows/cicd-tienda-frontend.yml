@@ -19,6 +19,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: ./frontend
+        file: ./frontend/Dockerfile
         push: true
         tags: |
           jocamposar/front_perrito

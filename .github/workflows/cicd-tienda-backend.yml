@@ -18,7 +18,8 @@ jobs:
     - name: build docker
       uses: docker/build-push-action@v5
       with:
-        context: ./backend/Dockerfile
+        context: ./backend
+        file: ./backend/Dockerfile
         push: true
         tags: |
           jocamposar/back_perrito
