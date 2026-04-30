@@ -16,11 +16,12 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
     - name: listar carpetas
-      run: echo ls
+      run: echo pwd
+
     - name: build docker
       uses: docker/build-push-action@v5
       with:
-        context: ./db/
+        context: .
         push: true
         tags: |
           jocamposar/db_perrito
