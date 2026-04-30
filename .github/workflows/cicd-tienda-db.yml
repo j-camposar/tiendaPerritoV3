@@ -21,7 +21,7 @@ jobs:
     - name: build docker
       uses: docker/build-push-action@v5
       with:
-        context: db/
+        context: ./db
         push: true
         tags: |
           jocamposar/db_perrito
