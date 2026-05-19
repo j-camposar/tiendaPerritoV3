@@ -3,28 +3,9 @@ name: CI/CD Tienda Perritos - Frontend
 on:
   push:
     branches: [ "main" ]
-    paths:
-      - "frontend/**"
-
-jobs:
-  build-push-dockerhub:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout código
-      uses: actions/checkout@v3
-    - name: login dockerhub
-      uses: docker/login-action@v3
-      with: 
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: build docker
-      uses: docker/build-push-action@v5
-      with:
-        context: ./frontend
-        push: true
-        tags: |
-          jocamposar/front_perrito
    
+
+jobs: 
 
   build-push-deploy-frontend:
     runs-on: ubuntu-latest
@@ -51,18 +32,22 @@ jobs:
         docker tag tienda-frontend:latest ${{ secrets.ECR_REPO_URL_FRONTEND }}:latest
         docker push ${{ secrets.ECR_REPO_URL_FRONTEND }}:latest
 
-    - name: Desplegar Frontend vía SSM
+    - name: Descargar Task Definition actual
       run: |
-        aws ssm send-command \
-          --instance-ids ${{ secrets.EC2_FRONTEND_INSTANCE_ID }} \
-          --document-name "AWS-RunShellScript" \
-          --comment "Actualizar tienda-frontend desde ECR" \
-          --parameters '{"commands":[
-            "set -e",
-            "aws ecr get-login-password --region '${{ secrets.AWS_REGION }}' | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}",
-            "docker pull ${{ secrets.ECR_REPO_URL_FRONTEND }}:latest",
-            "docker stop tienda-frontend || true",
-            "docker rm tienda-frontend || true",
-            "docker run -d --name tienda-frontend -p 80:80 ${{ secrets.ECR_REPO_URL_FRONTEND }}:latest"
-          ]}' \
-          --output text
+        aws ecs describe-task-definition --task-definition ${{ secrets.ECS_TASK_DEFINITION_NAME }} --query taskDefinition > task-definition.json
+
+    - name: Actualizar Tag de la imagen en la Task Def
+      id: render-task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: task-definition.json
+        container-name: front-perritos # El nombre del contenedor dentro de la task def
+        image: ${{ secrets.ECR_REPO_URL_FRONTEND }}:latest
+
+    - name: Desplegar nueva Task Definition en el Servicio
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+      with:
+        task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+        service: ${{ secrets.ECS_SERVICE_NAME }}
+        cluster: ${{ secrets.ECS_CLUSTER_NAME }}
+        wait-for-service-stability: true
